@@ -32,9 +32,8 @@ function Nav() {
 }
 
 function status(f: Filament) {
-  const pct = f.weight_remaining / f.weight_total
-  if (pct < 0.15) return 'urgent'
-  if (pct < 0.35) return 'low'
+  if (f.weight_remaining < 1000) return 'urgent'
+  if (f.weight_remaining < 2000) return 'low'
   return 'ok'
 }
 
