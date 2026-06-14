@@ -159,10 +159,23 @@ export default function VenuesPage() {
                         <div className={`h-full rounded-full transition-all ${level === 'urgent' ? 'bg-red-400' : level === 'low' ? 'bg-amber-400' : 'bg-green-400'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => updateSachets(v.id, -5)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">−5</button>
-                      <button onClick={() => updateSachets(v.id, 5)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">+5</button>
-                    </div>
+                    <div className="flex gap-1 items-center">
+  <button onClick={() => updateSachets(v.id, -1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">−</button>
+  <input
+    type="number"
+    min="0"
+    defaultValue={v.sachets_current}
+    onBlur={async (e) => {
+      const val = parseInt(e.target.value)
+      if (!isNaN(val)) {
+        await supabase.from('venues').update({ sachets_current: val }).eq('id', v.id)
+        setVenues(prev => prev.map(venue => venue.id === v.id ? { ...venue, sachets_current: val } : venue))
+      }
+    }}
+    className="w-14 text-center border border-gray-200 rounded-lg px-1 py-1 text-sm"
+  />
+  <button onClick={() => updateSachets(v.id, 1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">+</button>
+</div>
                   </div>
                   {v.last_reorder && <p className="text-xs text-gray-400 mt-2">Dernier réassort : {new Date(v.last_reorder).toLocaleDateString('fr-FR')}</p>}
                   {v.notes && <p className="text-xs text-gray-400 mt-1 italic">{v.notes}</p>}
