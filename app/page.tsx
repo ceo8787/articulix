@@ -12,22 +12,6 @@ function daysUntilReorder(day: number) {
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-function Nav() {
-  return (
-    <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between flex-wrap gap-2">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center"><Gift className="w-5 h-5 text-white" /></div>
-        <span className="font-semibold text-lg">Articulix</span>
-      </div>
-      <div className="flex gap-1 flex-wrap">
-        {[['/', 'Dashboard'], ['/models', 'Stock'], ['/venues', 'Points de vente'], ['/reorders', 'Réassorts'], ['/sachets', 'Sachets'], ['/filaments', 'Filaments'], ['/invoices', 'Factures'], ['/tasks', 'Tâches'], ['/references', 'Références']].map(([href, label]) => (
-          <Link key={href} href={href} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">{label}</Link>
-        ))}
-      </div>
-    </nav>
-  )
-}
-
 export default function Dashboard() {
   const [models, setModels] = useState<any[]>([])
   const [venues, setVenues] = useState<any[]>([])
@@ -84,12 +68,11 @@ export default function Dashboard() {
     { label: 'Stock bas', value: low, icon: TrendingDown, color: 'bg-amber-50 text-amber-700', href: '/models?filter=low' },
     { label: 'Points de vente', value: venues.length, icon: Store, color: 'bg-teal-50 text-teal-700', href: '/venues' },
     { label: 'Réassorts planifiés', value: pending, icon: RefreshCw, color: 'bg-purple-50 text-purple-700', href: '/reorders' },
-    { label: 'CA estimé ce mois', value: caEstime + '€', icon: Euro, color: 'bg-green-50 text-green-700', href: '/venues' },
+    { label: 'CA estimé ce mois', value: caEstime + '€', icon: Euro, color: 'bg-green-50 text-green-700', href: '/revenue' },
   ]
 
   return (
     <div className="min-h-screen">
-      <Nav />
       <main className="max-w-5xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-semibold mb-6">Tableau de bord</h1>
         {loading ? <div className="text-gray-400 text-sm">Chargement...</div> : (
