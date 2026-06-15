@@ -2,8 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import { Gift, Plus, Trash2, ChevronUp, ChevronDown, ArrowLeft } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 
 interface Model {
   id: string
@@ -81,18 +80,6 @@ function ModelsContent() {
 
   return (
     <div className="min-h-screen">
-      <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center"><Gift className="w-5 h-5 text-white" /></div>
-          <span className="font-semibold text-lg">Articulix</span>
-        </div>
-        <div className="flex gap-1">
-          {[['/', 'Dashboard'], ['/models', 'Stock'], ['/venues', 'Points de vente'], ['/reorders', 'Réassorts'], ['/sachets', 'Sachets']].map(([href, label]) => (
-            <Link key={href} href={href} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">{label}</Link>
-          ))}
-        </div>
-      </nav>
-
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Stock des modèles</h1>
@@ -135,7 +122,7 @@ function ModelsContent() {
               {loading ? (
                 <tr><td colSpan={6} className="text-center py-8 text-gray-400">Chargement...</td></tr>
               ) : list.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Aucun modèle. Ajoutez-en un ci-dessous.</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Aucun modèle.</td></tr>
               ) : list.map(m => (
                 <tr key={m.id} className="border-t border-gray-50 hover:bg-gray-50/50">
                   <td className="px-4 py-3 font-medium">{m.name}</td>
