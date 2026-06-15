@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Gift, Plus, FileText, Upload, ExternalLink, Trash2 } from 'lucide-react'
+import { Gift, Plus, FileText, Upload, ExternalLink, Trash2, CheckCircle, Clock } from 'lucide-react'
 
 interface Invoice {
   id: string
@@ -16,21 +16,6 @@ interface Invoice {
   created_at: string
 }
 
-function Nav() {
-  return (
-    <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center"><Gift className="w-5 h-5 text-white" /></div>
-        <span className="font-semibold text-lg">Articulix</span>
-      </div>
-      <div className="flex gap-1 flex-wrap">
-        {[['/', 'Dashboard'], ['/models', 'Stock'], ['/venues', 'Points de vente'], ['/reorders', 'Réassorts'], ['/sachets', 'Sachets'], ['/filaments', 'Filaments'], ['/invoices', 'Factures'], ['/tasks', 'Tâches'], ['/references', 'Références']].map(([href, label]) => (
-          <Link key={href} href={href} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">{label}</Link>
-        ))}
-      </div>
-    </nav>
-  )
-}
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -54,6 +39,7 @@ export default function InvoicesPage() {
     if (!form.title.trim()) return
     setSaving(true)
     let file_url = null
+
     if (file) {
       const ext = file.name.split('.').pop()
       const path = `invoices/${Date.now()}.${ext}`
@@ -63,7 +49,13 @@ export default function InvoicesPage() {
         file_url = urlData.publicUrl
       }
     }
-    await supabase.from('invoices').insert({ ...form, amount: parseFloat(form.amount) || 0, file_url })
+
+    await supabase.from('invoices').insert({
+      ...form,
+      amount: parseFloat(form.amount) || 0,
+      file_url
+    })
+
     setForm({ title: '', supplier: '', amount: '', date: '', status: 'en attente', notes: '' })
     setFile(null)
     setShowForm(false)
@@ -86,7 +78,7 @@ export default function InvoicesPage() {
   const total = filtered.reduce((acc, i) => acc + i.amount, 0)
   const unpaid = invoices.filter(i => i.status === 'en attente').reduce((acc, i) => acc + i.amount, 0)
 
-  const statusConfig: Record<string, string> = {
+  const statusConfig = {
     'payée': 'bg-green-50 text-green-700',
     'en attente': 'bg-amber-50 text-amber-700',
     'en retard': 'bg-red-50 text-red-700',
@@ -94,7 +86,7 @@ export default function InvoicesPage() {
 
   return (
     <div className="min-h-screen">
-      <Nav />
+      
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Factures</h1>
@@ -120,7 +112,7 @@ export default function InvoicesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="text-xs text-gray-500 block mb-1">Titre *</label>
-                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ex: Bobines PLA" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ex: Bobines PLA Bambu Lab" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Fournisseur</label>
@@ -145,7 +137,14 @@ export default function InvoicesPage() {
               <div className="col-span-2">
                 <label className="text-xs text-gray-500 block mb-1">Fichier PDF</label>
                 <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-brand transition-colors" onClick={() => fileRef.current?.click()}>
-                  {file ? <p className="text-sm text-brand font-medium">{file.name}</p> : <div><Upload className="w-6 h-6 text-gray-300 mx-auto mb-1" /><p className="text-xs text-gray-400">Cliquez pour uploader un PDF</p></div>}
+                  {file ? (
+                    <p className="text-sm text-brand font-medium">{file.name}</p>
+                  ) : (
+                    <div>
+                      <Upload className="w-6 h-6 text-gray-300 mx-auto mb-1" />
+                      <p className="text-xs text-gray-400">Cliquez pour uploader un PDF</p>
+                    </div>
+                  )}
                   <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setFile(e.target.files?.[0] || null)} />
                 </div>
               </div>
@@ -163,16 +162,18 @@ export default function InvoicesPage() {
 
         <div className="flex gap-2 mb-4">
           {['all', 'en attente', 'payée', 'en retard'].map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterStatus === s ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
+            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterStatus === s ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
               {s === 'all' ? 'Toutes' : s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
           ))}
         </div>
 
-        {loading ? <div className="text-gray-400 text-sm">Chargement...</div> : filtered.length === 0 ? (
+        {loading ? (
+          <div className="text-gray-400 text-sm">Chargement...</div>
+        ) : filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-12 text-center text-gray-400">
             <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Aucune facture.</p>
+            <p className="text-sm">Aucune facture. Ajoutez votre première facture !</p>
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -190,7 +191,10 @@ export default function InvoicesPage() {
               <tbody>
                 {filtered.map(inv => (
                   <tr key={inv.id} className="border-t border-gray-50 hover:bg-gray-50/50">
-                    <td className="px-4 py-3"><div className="font-medium">{inv.title}</div>{inv.notes && <div className="text-xs text-gray-400">{inv.notes}</div>}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{inv.title}</div>
+                      {inv.notes && <div className="text-xs text-gray-400">{inv.notes}</div>}
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{inv.supplier}</td>
                     <td className="px-4 py-3 text-gray-600">{inv.date ? new Date(inv.date).toLocaleDateString('fr-FR') : '—'}</td>
                     <td className="px-4 py-3 text-right font-semibold">{inv.amount.toFixed(2)} €</td>
@@ -203,7 +207,11 @@ export default function InvoicesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
-                        {inv.file_url && <a href={inv.file_url} target="_blank" rel="noopener noreferrer" className="text-brand hover:text-brand-dark"><ExternalLink className="w-4 h-4" /></a>}
+                        {inv.file_url && (
+                          <a href={inv.file_url} target="_blank" rel="noopener noreferrer" className="text-brand hover:text-brand-dark">
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
                         <button onClick={() => deleteInvoice(inv.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
