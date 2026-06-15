@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Gift, Plus, CheckSquare, Square, Trash2 } from 'lucide-react'
+import { Gift, Plus, CheckSquare, Square, Trash2, Flag } from 'lucide-react'
 
 interface Task {
   id: string
@@ -15,26 +15,11 @@ interface Task {
   created_at: string
 }
 
-function Nav() {
-  return (
-    <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center"><Gift className="w-5 h-5 text-white" /></div>
-        <span className="font-semibold text-lg">Articulix</span>
-      </div>
-      <div className="flex gap-1 flex-wrap">
-        {[['/', 'Dashboard'], ['/models', 'Stock'], ['/venues', 'Points de vente'], ['/reorders', 'Réassorts'], ['/sachets', 'Sachets'], ['/filaments', 'Filaments'], ['/invoices', 'Factures'], ['/tasks', 'Tâches'], ['/references', 'Références']].map(([href, label]) => (
-          <Link key={href} href={href} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">{label}</Link>
-        ))}
-      </div>
-    </nav>
-  )
-}
 
-const priorityConfig: Record<string, string> = {
-  haute: 'bg-red-50 text-red-700',
-  moyenne: 'bg-amber-50 text-amber-700',
-  basse: 'bg-gray-50 text-gray-600',
+const priorityConfig = {
+  haute: { color: 'text-red-500', bg: 'bg-red-50 text-red-700' },
+  moyenne: { color: 'text-amber-500', bg: 'bg-amber-50 text-amber-700' },
+  basse: { color: 'text-gray-400', bg: 'bg-gray-50 text-gray-600' },
 }
 
 export default function TasksPage() {
@@ -85,7 +70,7 @@ export default function TasksPage() {
 
   return (
     <div className="min-h-screen">
-      <Nav />
+      
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -121,10 +106,12 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {loading ? <div className="text-gray-400 text-sm">Chargement...</div> : filtered.length === 0 ? (
+        {loading ? (
+          <div className="text-gray-400 text-sm">Chargement...</div>
+        ) : filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-12 text-center text-gray-400">
             <CheckSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Aucune tâche.</p>
+            <p className="text-sm">Aucune tâche. Ajoutez votre première tâche !</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -136,7 +123,7 @@ export default function TasksPage() {
                 <div className="flex-1">
                   <p className={`text-sm font-medium ${t.status === 'terminée' ? 'line-through text-gray-400' : ''}`}>{t.title}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${priorityConfig[t.priority]}`}>{t.priority}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${priorityConfig[t.priority].bg}`}>{t.priority}</span>
                     {t.assignee && <span className="text-xs text-gray-400">{t.assignee}</span>}
                     {t.due_date && <span className="text-xs text-gray-400">→ {new Date(t.due_date).toLocaleDateString('fr-FR')}</span>}
                     {t.status === 'en cours' && <span className="text-xs px-2 py-0.5 rounded-full bg-brand-light text-brand-dark">En cours</span>}
