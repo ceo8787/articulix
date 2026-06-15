@@ -1,27 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import { Gift, Zap, Star } from 'lucide-react'
+import { Zap, Star } from 'lucide-react'
 
 interface Model { id: string; name: string; stock_normal: number; stock_gold: number }
 interface Sachet { n1: string; n2: string; gold: string }
-
-function Nav() {
-  return (
-    <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center"><Gift className="w-5 h-5 text-white" /></div>
-        <span className="font-semibold text-lg">Articulix</span>
-      </div>
-      <div className="flex gap-1">
-        {[['/', 'Dashboard'], ['/models', 'Stock'], ['/venues', 'Points de vente'], ['/reorders', 'Réassorts'], ['/sachets', 'Sachets']].map(([href, label]) => (
-          <Link key={href} href={href} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">{label}</Link>
-        ))}
-      </div>
-    </nav>
-  )
-}
 
 export default function SachetsPage() {
   const [models, setModels] = useState<Model[]>([])
@@ -29,7 +12,6 @@ export default function SachetsPage() {
   const [sachets, setSachets] = useState<Sachet[]>([])
   const [loading, setLoading] = useState(true)
   const [generated, setGenerated] = useState(false)
-  const [applyStock, setApplyStock] = useState(false)
 
   useEffect(() => {
     supabase.from('models').select('*').then(({ data }) => {
@@ -91,10 +73,9 @@ export default function SachetsPage() {
 
   return (
     <div className="min-h-screen">
-      <Nav />
       <main className="max-w-5xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-semibold mb-2">Générateur de sachets</h1>
-        <p className="text-sm text-gray-500 mb-6">Compose des sachets en piochant les modèles les plus stockés en priorité pour rééquilibrer votre stock.</p>
+        <p className="text-sm text-gray-500 mb-6">Compose des sachets en piochant les modèles les plus stockés en priorité.</p>
 
         <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
           <div className="flex items-center gap-6 flex-wrap">
@@ -116,18 +97,13 @@ export default function SachetsPage() {
               </button>
             </div>
           </div>
-          {!canGenerate && !loading && (
-            <p className="text-xs text-red-500 mt-3">Il faut au moins 2 modèles normaux et 1 modèle doré en stock. <Link href="/models" className="underline">Ajouter des modèles →</Link></p>
-          )}
         </div>
 
         {generated && sachets.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-600"><span className="font-medium">{sachets.length} sachets</span> générés</p>
-              <button onClick={applyToStock} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 flex items-center gap-2">
-                Déduire du stock
-              </button>
+              <button onClick={applyToStock} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">Déduire du stock</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {sachets.map((s, i) => (
@@ -144,10 +120,6 @@ export default function SachetsPage() {
               ))}
             </div>
           </>
-        )}
-
-        {generated && sachets.length === 0 && (
-          <p className="text-sm text-red-500">Stock insuffisant pour générer des sachets.</p>
         )}
       </main>
     </div>
