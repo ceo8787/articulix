@@ -94,11 +94,12 @@ export default function TasksPage() {
               <option value="moyenne">🟡 Moyenne</option>
               <option value="basse">🟢 Basse</option>
             </select>
-            <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm" value={newAssignee} onChange={e => setNewAssignee(e.target.value)}>
-              <option value="">Assignée à...</option>
-              <option value="Lou">Lou</option>
-              <option value="Les deux">Les deux</option>
-            </select>
+           <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm" value={newAssignee} onChange={e => setNewAssignee(e.target.value)}>
+  <option value="">Assignée à...</option>
+  <option value="Lou">Lou</option>
+  <option value="Denis">Denis</option>
+  <option value="Les deux">Les deux</option>
+</select> 
             <input type="date" className="border border-gray-200 rounded-lg px-3 py-2 text-sm" value={newDue} onChange={e => setNewDue(e.target.value)} />
             <button onClick={addTask} disabled={!newTitle.trim()} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark disabled:opacity-50 flex items-center gap-1">
               <Plus className="w-4 h-4" /> Ajouter
