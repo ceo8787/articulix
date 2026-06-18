@@ -8,13 +8,11 @@ interface Model {
   id: string
   name: string
   stock_normal: number
-  stock_gold: number
 }
 
 function status(m: Model) {
-  const t = m.stock_normal + m.stock_gold
-  if (t < 10) return 'urgent'
-  if (t < 20) return 'low'
+  if (m.stock_normal < 10) return 'urgent'
+  if (m.stock_normal < 20) return 'low'
   return 'ok'
 }
 
@@ -33,7 +31,6 @@ function ModelsContent() {
   const [sort, setSort] = useState('priority')
   const [newName, setNewName] = useState('')
   const [newNormal, setNewNormal] = useState(30)
-  const [newGold, setNewGold] = useState(0)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { load() }, [])
@@ -47,17 +44,17 @@ function ModelsContent() {
   async function addModel() {
     if (!newName.trim()) return
     setSaving(true)
-    await supabase.from('models').insert({ name: newName.trim(), stock_normal: newNormal, stock_gold: newGold })
-    setNewName(''); setNewNormal(30); setNewGold(0)
+    await supabase.from('models').insert({ name: newName.trim(), stock_normal: newNormal, stock_gold: 0 })
+    setNewName(''); setNewNormal(30)
     setSaving(false)
     load()
   }
 
-  async function updateStock(id: string, field: 'stock_normal' | 'stock_gold', delta: number) {
+  async function updateStock(id: string, delta: number) {
     const m = models.find(m => m.id === id)!
-    const val = Math.max(0, m[field] + delta)
-    await supabase.from('models').update({ [field]: val }).eq('id', id)
-    setModels(prev => prev.map(m => m.id === id ? { ...m, [field]: val } : m))
+    const val = Math.max(0, m.stock_normal + delta)
+    await supabase.from('models').update({ stock_normal: val }).eq('id', id)
+    setModels(prev => prev.map(m => m.id === id ? { ...m, stock_normal: val } : m))
   }
 
   async function deleteModel(id: string) {
@@ -72,11 +69,11 @@ function ModelsContent() {
 
   if (sort === 'priority') list = [...list].sort((a, b) => {
     const o: Record<string, number> = { urgent: 0, low: 1, ok: 2 }
-    return o[status(a)] - o[status(b)] || (a.stock_normal + a.stock_gold) - (b.stock_normal + b.stock_gold)
+    return o[status(a)] - o[status(b)] || a.stock_normal - b.stock_normal
   })
   else if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
-  else if (sort === 'stock-asc') list = [...list].sort((a, b) => (a.stock_normal + a.stock_gold) - (b.stock_normal + b.stock_gold))
-  else if (sort === 'stock-desc') list = [...list].sort((a, b) => (b.stock_normal + b.stock_gold) - (a.stock_normal + a.stock_gold))
+  else if (sort === 'stock-asc') list = [...list].sort((a, b) => a.stock_normal - b.stock_normal)
+  else if (sort === 'stock-desc') list = [...list].sort((a, b) => b.stock_normal - a.stock_normal)
 
   return (
     <div className="min-h-screen">
@@ -111,36 +108,26 @@ function ModelsContent() {
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
               <tr>
                 <th className="text-left px-4 py-3">Modèle</th>
-                <th className="text-center px-4 py-3">Normal</th>
-                <th className="text-center px-4 py-3">Doré</th>
-                <th className="text-center px-4 py-3">Total</th>
+                <th className="text-center px-4 py-3">Stock</th>
                 <th className="text-center px-4 py-3">Statut</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Chargement...</td></tr>
+                <tr><td colSpan={4} className="text-center py-8 text-gray-400">Chargement...</td></tr>
               ) : list.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Aucun modèle.</td></tr>
+                <tr><td colSpan={4} className="text-center py-8 text-gray-400">Aucun modèle.</td></tr>
               ) : list.map(m => (
                 <tr key={m.id} className="border-t border-gray-50 hover:bg-gray-50/50">
                   <td className="px-4 py-3 font-medium">{m.name}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => updateStock(m.id, 'stock_normal', -1)} className="w-6 h-6 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-base leading-none">−</button>
-                      <span className="w-8 text-center">{m.stock_normal}</span>
-                      <button onClick={() => updateStock(m.id, 'stock_normal', 1)} className="w-6 h-6 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-base leading-none">+</button>
+                      <button onClick={() => updateStock(m.id, -1)} className="w-6 h-6 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-base leading-none">−</button>
+                      <span className="w-10 text-center font-semibold">{m.stock_normal}</span>
+                      <button onClick={() => updateStock(m.id, 1)} className="w-6 h-6 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-base leading-none">+</button>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => updateStock(m.id, 'stock_gold', -1)} className="w-6 h-6 rounded border border-amber-200 text-amber-600 hover:bg-amber-50 flex items-center justify-center text-base leading-none">−</button>
-                      <span className="w-8 text-center text-amber-700 font-medium">{m.stock_gold}</span>
-                      <button onClick={() => updateStock(m.id, 'stock_gold', 1)} className="w-6 h-6 rounded border border-amber-200 text-amber-600 hover:bg-amber-50 flex items-center justify-center text-base leading-none">+</button>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center font-semibold">{m.stock_normal + m.stock_gold}</td>
                   <td className="px-4 py-3 text-center"><StatusBadge s={status(m)} /></td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => deleteModel(m.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -156,12 +143,8 @@ function ModelsContent() {
           <div className="flex gap-3 flex-wrap">
             <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 min-w-40" placeholder="Nom du modèle" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addModel()} />
             <div className="flex items-center gap-2 text-sm">
-              <label className="text-gray-500">Normal</label>
+              <label className="text-gray-500">Stock</label>
               <input type="number" min="0" className="border border-gray-200 rounded-lg px-3 py-2 w-20 text-sm" value={newNormal} onChange={e => setNewNormal(+e.target.value)} />
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <label className="text-amber-600">Doré</label>
-              <input type="number" min="0" className="border border-amber-200 rounded-lg px-3 py-2 w-20 text-sm" value={newGold} onChange={e => setNewGold(+e.target.value)} />
             </div>
             <button onClick={addModel} disabled={saving || !newName.trim()} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark disabled:opacity-50 flex items-center gap-1">
               <Plus className="w-4 h-4" /> Ajouter
