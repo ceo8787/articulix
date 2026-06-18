@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Plus, Trash2, Store, MapPin, Phone, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Store, MapPin, Phone, RefreshCw, Pencil, X, Check } from 'lucide-react'
 
 interface Venue {
   id: string
@@ -28,6 +28,7 @@ export default function VenuesPage() {
   const [venues, setVenues] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ name: '', address: '', contact: '', sachets_target: 80, notes: '', reorder_day: 1 })
   const [saving, setSaving] = useState(false)
 
@@ -39,12 +40,27 @@ export default function VenuesPage() {
     setLoading(false)
   }
 
-  async function addVenue() {
+  function startEdit(v: Venue) {
+    setEditId(v.id)
+    setForm({ name: v.name, address: v.address, contact: v.contact, sachets_target: v.sachets_target, notes: v.notes, reorder_day: v.reorder_day || 1 })
+    setShowForm(true)
+  }
+
+  function cancelEdit() {
+    setEditId(null)
+    setShowForm(false)
+    setForm({ name: '', address: '', contact: '', sachets_target: 80, notes: '', reorder_day: 1 })
+  }
+
+  async function saveVenue() {
     if (!form.name.trim()) return
     setSaving(true)
-    await supabase.from('venues').insert({ ...form, sachets_current: 0 })
-    setForm({ name: '', address: '', contact: '', sachets_target: 80, notes: '', reorder_day: 1 })
-    setShowForm(false)
+    if (editId) {
+      await supabase.from('venues').update(form).eq('id', editId)
+    } else {
+      await supabase.from('venues').insert({ ...form, sachets_current: 0 })
+    }
+    cancelEdit()
     setSaving(false)
     load()
   }
@@ -85,14 +101,14 @@ export default function VenuesPage() {
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Points de vente</h1>
-          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark flex items-center gap-1">
+          <button onClick={() => { cancelEdit(); setShowForm(true) }} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark flex items-center gap-1">
             <Plus className="w-4 h-4" /> Ajouter
           </button>
         </div>
 
         {showForm && (
           <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
-            <h2 className="font-medium mb-4">Nouveau point de vente</h2>
+            <h2 className="font-medium mb-4">{editId ? 'Modifier le point de vente' : 'Nouveau point de vente'}</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><label className="text-xs text-gray-500 block mb-1">Nom *</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ex : Intermarché Panazol" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
               <div><label className="text-xs text-gray-500 block mb-1">Adresse</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
@@ -102,8 +118,8 @@ export default function VenuesPage() {
               <div className="col-span-2"><label className="text-xs text-gray-500 block mb-1">Notes</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm">Annuler</button>
-              <button onClick={addVenue} disabled={saving || !form.name.trim()} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium disabled:opacity-50">Enregistrer</button>
+              <button onClick={cancelEdit} className="px-4 py-2 border border-gray-200 rounded-lg text-sm flex items-center gap-1"><X className="w-4 h-4" /> Annuler</button>
+              <button onClick={saveVenue} disabled={saving || !form.name.trim()} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-1"><Check className="w-4 h-4" /> {editId ? 'Enregistrer' : 'Ajouter'}</button>
             </div>
           </div>
         )}
@@ -126,7 +142,8 @@ export default function VenuesPage() {
                       {days !== null && <p className={`text-xs mt-1 flex items-center gap-1 ${days <= 7 ? 'text-amber-600 font-medium' : 'text-gray-400'}`}><RefreshCw className="w-3 h-3" />Réassort le {v.reorder_day} du mois — {days === 0 ? "aujourd'hui !" : `dans ${days} jour(s)`}</p>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => planifierReassort(v)} className="text-xs px-3 py-1.5 bg-brand-light text-brand-dark rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Planifier réassort</button>
+                      <button onClick={() => planifierReassort(v)} className="text-xs px-3 py-1.5 bg-brand-light text-brand-dark rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Planifier</button>
+                      <button onClick={() => startEdit(v)} className="text-xs px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-1"><Pencil className="w-3 h-3" /> Modifier</button>
                       <button onClick={() => deleteVenue(v.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
