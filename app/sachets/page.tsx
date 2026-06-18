@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Zap, Star } from 'lucide-react'
+import { Zap } from 'lucide-react'
 
-interface Model { id: string; name: string; stock_normal: number; stock_gold: number }
-interface Sachet { n1: string; n2: string; gold: string }
+interface Model { id: string; name: string; stock_normal: number }
+interface Sachet { n1: string; n2: string; n3: string }
 
 export default function SachetsPage() {
   const [models, setModels] = useState<Model[]>([])
@@ -21,43 +21,35 @@ export default function SachetsPage() {
   }, [])
 
   function generate() {
-    const normals = models.filter(m => m.stock_normal > 0).map(m => ({ ...m, qty: m.stock_normal }))
-    const golds = models.filter(m => m.stock_gold > 0).map(m => ({ ...m, qty: m.stock_gold }))
-    if (normals.length < 2 || golds.length < 1) return
+    const available = models.filter(m => m.stock_normal > 0).map(m => ({ ...m, qty: m.stock_normal }))
+    if (available.length < 3) return
     const result: Sachet[] = []
     for (let i = 0; i < nb; i++) {
-      normals.sort((a, b) => b.qty - a.qty)
-      golds.sort((a, b) => b.qty - a.qty)
-      const avail = normals.filter(m => m.qty > 0)
-      const availG = golds.filter(m => m.qty > 0)
-      if (avail.length < 2 || availG.length < 1) break
-      const g = availG[0]
+      available.sort((a, b) => b.qty - a.qty)
+      const avail = available.filter(m => m.qty > 0)
+      if (avail.length < 3) break
       const n1 = avail[0]
-      const n2 = avail.find(m => m.name !== g.name && m.name !== n1.name)
-      if (!n2) break
-      result.push({ n1: n1.name, n2: n2.name, gold: g.name })
-      n1.qty--; n2.qty--; g.qty--
+      const n2 = avail[1]
+      const n3 = avail[2]
+      result.push({ n1: n1.name, n2: n2.name, n3: n3.name })
+      n1.qty--; n2.qty--; n3.qty--
     }
     setSachets(result)
     setGenerated(true)
   }
 
   async function applyToStock() {
-    const usage: Record<string, { normal: number; gold: number }> = {}
+    const usage: Record<string, number> = {}
     sachets.forEach(s => {
-      ;[s.n1, s.n2].forEach(name => {
-        if (!usage[name]) usage[name] = { normal: 0, gold: 0 }
-        usage[name].normal++
+      [s.n1, s.n2, s.n3].forEach(name => {
+        usage[name] = (usage[name] || 0) + 1
       })
-      if (!usage[s.gold]) usage[s.gold] = { normal: 0, gold: 0 }
-      usage[s.gold].gold++
     })
     for (const model of models) {
-      const u = usage[model.name]
-      if (!u) continue
+      const used = usage[model.name]
+      if (!used) continue
       await supabase.from('models').update({
-        stock_normal: Math.max(0, model.stock_normal - u.normal),
-        stock_gold: Math.max(0, model.stock_gold - u.gold)
+        stock_normal: Math.max(0, model.stock_normal - used)
       }).eq('id', model.id)
     }
     alert(`${sachets.length} sachets appliqués au stock !`)
@@ -67,25 +59,20 @@ export default function SachetsPage() {
     setSachets([])
   }
 
-  const normals = models.filter(m => m.stock_normal > 0).length
-  const golds = models.filter(m => m.stock_gold > 0).length
-  const canGenerate = normals >= 2 && golds >= 1
+  const available = models.filter(m => m.stock_normal > 0).length
+  const canGenerate = available >= 3
 
   return (
     <div className="min-h-screen">
       <main className="max-w-5xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-semibold mb-2">Générateur de sachets</h1>
-        <p className="text-sm text-gray-500 mb-6">Compose des sachets en piochant les modèles les plus stockés en priorité.</p>
+        <p className="text-sm text-gray-500 mb-6">Compose des sachets de 3 figurines en piochant les modèles les plus stockés en priorité.</p>
 
         <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
           <div className="flex items-center gap-6 flex-wrap">
             <div>
-              <div className="text-xs text-gray-500 mb-1">Modèles normaux disponibles</div>
-              <div className="text-xl font-semibold">{normals} <span className="text-sm text-gray-400 font-normal">modèles</span></div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 mb-1">Modèles dorés disponibles</div>
-              <div className="text-xl font-semibold text-amber-600">{golds} <span className="text-sm text-amber-400 font-normal">modèles</span></div>
+              <div className="text-xs text-gray-500 mb-1">Modèles disponibles</div>
+              <div className="text-xl font-semibold">{available} <span className="text-sm text-gray-400 font-normal">modèles</span></div>
             </div>
             <div className="flex-1 flex items-end justify-end gap-3">
               <div>
@@ -97,6 +84,9 @@ export default function SachetsPage() {
               </button>
             </div>
           </div>
+          {!canGenerate && !loading && (
+            <p className="text-xs text-red-500 mt-3">Il faut au moins 3 modèles en stock pour générer des sachets.</p>
+          )}
         </div>
 
         {generated && sachets.length > 0 && (
@@ -112,14 +102,16 @@ export default function SachetsPage() {
                   <div className="flex flex-wrap gap-2">
                     <span className="text-xs px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-700">{s.n1}</span>
                     <span className="text-xs px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-700">{s.n2}</span>
-                    <span className="text-xs px-2 py-1 bg-amber-50 border border-amber-100 rounded-lg text-amber-700 flex items-center gap-1">
-                      <Star className="w-3 h-3" />{s.gold}
-                    </span>
+                    <span className="text-xs px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-700">{s.n3}</span>
                   </div>
                 </div>
               ))}
             </div>
           </>
+        )}
+
+        {generated && sachets.length === 0 && (
+          <p className="text-sm text-red-500">Stock insuffisant pour générer des sachets.</p>
         )}
       </main>
     </div>
