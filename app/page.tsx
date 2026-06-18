@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Gift, Package, Store, RefreshCw, AlertTriangle, TrendingDown, Euro, Flag } from 'lucide-react'
+import { Package, Store, RefreshCw, AlertTriangle, TrendingDown, Euro, Flag } from 'lucide-react'
 
 function daysUntilReorder(day: number) {
   const today = new Date()
@@ -19,18 +19,24 @@ export default function Dashboard() {
   const [filaments, setFilaments] = useState<any[]>([])
   const [tasks, setTasks] = useState<any[]>([])
   const [sachetsStock, setSachetsStock] = useState(0)
+  const [currentMonthCA, setCurrentMonthCA] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [])
 
   async function load() {
-    const [{ data: m }, { data: v }, { data: r }, { data: f }, { data: t }, { data: s }] = await Promise.all([
+    const now = new Date()
+    const month = now.getMonth() + 1
+    const year = now.getFullYear()
+
+    const [{ data: m }, { data: v }, { data: r }, { data: f }, { data: t }, { data: s }, { data: ca }] = await Promise.all([
       supabase.from('models').select('*'),
       supabase.from('venues').select('*'),
       supabase.from('reorders').select('*, venues(name)').order('created_at', { ascending: false }).limit(5),
       supabase.from('filaments').select('*'),
       supabase.from('tasks').select('*').eq('status', 'à faire').eq('priority', 'haute'),
       supabase.from('settings').select('*').eq('key', 'sachets_stock').single(),
+      supabase.from('monthly_revenue').select('*').eq('month', month).eq('year', year).single(),
     ])
     setModels(m || [])
     setVenues(v || [])
@@ -38,6 +44,7 @@ export default function Dashboard() {
     setFilaments(f || [])
     setTasks(t || [])
     setSachetsStock(s?.value || 0)
+    setCurrentMonthCA(ca?.revenue || 0)
     setLoading(false)
   }
 
@@ -53,14 +60,13 @@ export default function Dashboard() {
     setSachetsStock(val)
   }
 
-  const urgent = models.filter(m => (m.stock_normal + m.stock_gold) < 10).length
-  const low = models.filter(m => { const t = m.stock_normal + m.stock_gold; return t >= 10 && t < 20 }).length
+  const urgent = models.filter(m => m.stock_normal < 10).length
+  const low = models.filter(m => m.stock_normal >= 10 && m.stock_normal < 20).length
   const pending = reorders.filter(r => r.status === 'planifié').length
   const criticalFilaments = filaments.filter(f => f.weight_remaining < 1000)
   const lowFilaments = filaments.filter(f => f.weight_remaining >= 1000 && f.weight_remaining < 2000)
   const venuesWithReorder = venues.filter(v => v.reorder_day).map(v => ({ ...v, days: daysUntilReorder(v.reorder_day) })).sort((a, b) => a.days - b.days)
   const urgentReorders = venuesWithReorder.filter(v => v.days <= 7)
-  const caEstime = venues.reduce((acc, v) => acc + Math.max(0, v.sachets_target - v.sachets_current) * 5, 0)
 
   const statCards = [
     { label: 'Modèles', value: models.length, icon: Package, color: 'bg-brand-light text-brand-dark', href: '/models' },
@@ -68,7 +74,7 @@ export default function Dashboard() {
     { label: 'Stock bas', value: low, icon: TrendingDown, color: 'bg-amber-50 text-amber-700', href: '/models?filter=low' },
     { label: 'Points de vente', value: venues.length, icon: Store, color: 'bg-teal-50 text-teal-700', href: '/venues' },
     { label: 'Réassorts planifiés', value: pending, icon: RefreshCw, color: 'bg-purple-50 text-purple-700', href: '/reorders' },
-    { label: 'CA estimé ce mois', value: caEstime + '€', icon: Euro, color: 'bg-green-50 text-green-700', href: '/revenue' },
+    { label: 'CA ce mois', value: currentMonthCA + '€', icon: Euro, color: 'bg-green-50 text-green-700', href: '/revenue' },
   ]
 
   return (
@@ -92,19 +98,11 @@ export default function Dashboard() {
                   <h2 className="font-medium text-base">Stock de sachets vides</h2>
                   {sachetsStock <= 160 && <p className="text-xs text-red-600 font-medium mt-0.5">⚠️ Stock bas — pensez à en commander !</p>}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => updateSachetsStock(-10)} className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">−10</button>
-                    <input
-                      type="number"
-                      min="0"
-                      value={sachetsStock}
-                      onChange={e => setSachetsStockDirect(parseInt(e.target.value))}
-                      className={`w-20 text-center border rounded-lg px-2 py-1.5 text-lg font-semibold ${sachetsStock <= 160 ? 'border-red-200 text-red-700' : 'border-gray-200 text-gray-800'}`}
-                    />
-                    <button onClick={() => updateSachetsStock(10)} className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">+10</button>
-                    <button onClick={() => updateSachetsStock(100)} className="w-10 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">+100</button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => updateSachetsStock(-10)} className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">−10</button>
+                  <input type="number" min="0" value={sachetsStock} onChange={e => setSachetsStockDirect(parseInt(e.target.value))} className={`w-20 text-center border rounded-lg px-2 py-1.5 text-lg font-semibold ${sachetsStock <= 160 ? 'border-red-200 text-red-700' : 'border-gray-200 text-gray-800'}`} />
+                  <button onClick={() => updateSachetsStock(10)} className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">+10</button>
+                  <button onClick={() => updateSachetsStock(100)} className="w-10 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">+100</button>
                   <span className="text-sm text-gray-400">sachets</span>
                 </div>
               </div>
@@ -177,7 +175,7 @@ export default function Dashboard() {
                       <div><span className="font-medium text-sm">{r.venues?.name}</span><span className="text-gray-400 text-sm ml-2">— {r.sachets_count} sachets</span></div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('fr-FR')}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'livré' ? 'bg-green-50 text-green-700' : r.status === 'planifié' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600'}`}>{r.status}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'livré' ? 'bg-green-50 text-green-700' : r.status === 'planifié' ? 'bg-amber-50 text-amber-700' : r.status === 'annulé' ? 'bg-gray-50 text-gray-500' : 'bg-blue-50 text-blue-700'}`}>{r.status}</span>
                       </div>
                     </div>
                   ))}
