@@ -1,10 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Zap } from 'lucide-react'
+import { Zap, Star } from 'lucide-react'
 
 interface Model { id: string; name: string; stock_normal: number }
-interface Sachet { n1: string; n2: string; n3: string }
+interface Sachet { n1: string; n2: string; gold: string }
+
+const GOLD_NAME = 'doree'
 
 export default function SachetsPage() {
   const [models, setModels] = useState<Model[]>([])
@@ -21,18 +23,26 @@ export default function SachetsPage() {
   }, [])
 
   function generate() {
-    const available = models.filter(m => m.stock_normal > 0).map(m => ({ ...m, qty: m.stock_normal }))
-    if (available.length < 3) return
+    const goldModel = models.find(m => m.name.toLowerCase() === GOLD_NAME)
+    const normals = models.filter(m => m.name.toLowerCase() !== GOLD_NAME && m.stock_normal > 0).map(m => ({ ...m, qty: m.stock_normal }))
+    const goldQty = { qty: goldModel?.stock_normal || 0 }
+
+    if (!goldModel || goldQty.qty < 1 || normals.length < 2) {
+      setSachets([])
+      setGenerated(true)
+      return
+    }
+
     const result: Sachet[] = []
     for (let i = 0; i < nb; i++) {
-      available.sort((a, b) => b.qty - a.qty)
-      const avail = available.filter(m => m.qty > 0)
-      if (avail.length < 3) break
+      if (goldQty.qty < 1) break
+      normals.sort((a, b) => b.qty - a.qty)
+      const avail = normals.filter(m => m.qty > 0)
+      if (avail.length < 2) break
       const n1 = avail[0]
       const n2 = avail[1]
-      const n3 = avail[2]
-      result.push({ n1: n1.name, n2: n2.name, n3: n3.name })
-      n1.qty--; n2.qty--; n3.qty--
+      result.push({ n1: n1.name, n2: n2.name, gold: goldModel.name })
+      n1.qty--; n2.qty--; goldQty.qty--
     }
     setSachets(result)
     setGenerated(true)
@@ -41,7 +51,7 @@ export default function SachetsPage() {
   async function applyToStock() {
     const usage: Record<string, number> = {}
     sachets.forEach(s => {
-      [s.n1, s.n2, s.n3].forEach(name => {
+      [s.n1, s.n2, s.gold].forEach(name => {
         usage[name] = (usage[name] || 0) + 1
       })
     })
@@ -59,20 +69,25 @@ export default function SachetsPage() {
     setSachets([])
   }
 
-  const available = models.filter(m => m.stock_normal > 0).length
-  const canGenerate = available >= 3
+  const goldModel = models.find(m => m.name.toLowerCase() === GOLD_NAME)
+  const normalsCount = models.filter(m => m.name.toLowerCase() !== GOLD_NAME && m.stock_normal > 0).length
+  const canGenerate = !!goldModel && (goldModel.stock_normal > 0) && normalsCount >= 2
 
   return (
     <div className="min-h-screen">
       <main className="max-w-5xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-semibold mb-2">Générateur de sachets</h1>
-        <p className="text-sm text-gray-500 mb-6">Compose des sachets de 3 figurines en piochant les modèles les plus stockés en priorité.</p>
+        <p className="text-sm text-gray-500 mb-6">Chaque sachet contient 2 figurines normales + 1 figurine "doree" obligatoire.</p>
 
         <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
           <div className="flex items-center gap-6 flex-wrap">
             <div>
-              <div className="text-xs text-gray-500 mb-1">Modèles disponibles</div>
-              <div className="text-xl font-semibold">{available} <span className="text-sm text-gray-400 font-normal">modèles</span></div>
+              <div className="text-xs text-gray-500 mb-1">Modèles normaux disponibles</div>
+              <div className="text-xl font-semibold">{normalsCount} <span className="text-sm text-gray-400 font-normal">modèles</span></div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">Stock "doree"</div>
+              <div className="text-xl font-semibold text-amber-600">{goldModel?.stock_normal ?? 0} <span className="text-sm text-amber-400 font-normal">disponibles</span></div>
             </div>
             <div className="flex-1 flex items-end justify-end gap-3">
               <div>
@@ -84,8 +99,14 @@ export default function SachetsPage() {
               </button>
             </div>
           </div>
-          {!canGenerate && !loading && (
-            <p className="text-xs text-red-500 mt-3">Il faut au moins 3 modèles en stock pour générer des sachets.</p>
+          {!goldModel && !loading && (
+            <p className="text-xs text-red-500 mt-3">Aucun modèle nommé "doree" trouvé dans le stock. Créez-le dans la page Stock.</p>
+          )}
+          {goldModel && goldModel.stock_normal < 1 && !loading && (
+            <p className="text-xs text-red-500 mt-3">Stock de "doree" épuisé.</p>
+          )}
+          {normalsCount < 2 && !loading && (
+            <p className="text-xs text-red-500 mt-3">Il faut au moins 2 modèles normaux en stock.</p>
           )}
         </div>
 
@@ -102,7 +123,9 @@ export default function SachetsPage() {
                   <div className="flex flex-wrap gap-2">
                     <span className="text-xs px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-700">{s.n1}</span>
                     <span className="text-xs px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-700">{s.n2}</span>
-                    <span className="text-xs px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-700">{s.n3}</span>
+                    <span className="text-xs px-2 py-1 bg-amber-50 border border-amber-100 rounded-lg text-amber-700 flex items-center gap-1">
+                      <Star className="w-3 h-3" />{s.gold}
+                    </span>
                   </div>
                 </div>
               ))}
