@@ -68,6 +68,14 @@ export default function Dashboard() {
   const venuesWithReorder = venues.filter(v => v.reorder_day).map(v => ({ ...v, days: daysUntilReorder(v.reorder_day) })).sort((a, b) => a.days - b.days)
   const urgentReorders = venuesWithReorder.filter(v => v.days <= 7)
 
+  // CA sachets et porte-clés vendus estimé (stock initial - stock actuel)
+  const caSachets = venues.reduce((acc, v) => acc + Math.max(0, (v.sachets_target || 0) - (v.sachets_current || 0)) * 5, 0)
+  const caPortecles = venues.reduce((acc, v) => acc + Math.max(0, (v.portecles_target || 0) - (v.portecles_current || 0)) * 2.5, 0)
+  const caTotal = caSachets + caPortecles
+
+  // Stock total porte-clés
+  const totalPortecles = models.find(m => m.name.toLowerCase() === 'portecle')?.stock_normal || 0
+
   const statCards = [
     { label: 'Modèles', value: models.length, icon: Package, color: 'bg-brand-light text-brand-dark', href: '/models' },
     { label: 'Urgents', value: urgent, icon: AlertTriangle, color: 'bg-red-50 text-red-700', href: '/models?filter=urgent' },
@@ -92,18 +100,47 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className={`rounded-xl border p-5 mb-4 ${sachetsStock <= 160 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-medium text-base">Stock de sachets vides</h2>
-                  {sachetsStock <= 160 && <p className="text-xs text-red-600 font-medium mt-0.5">⚠️ Stock bas — pensez à en commander !</p>}
+            {/* CA estimé détaillé */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-white rounded-xl border border-gray-100 p-4">
+                <div className="text-xs text-gray-500 mb-1">CA estimé sachets</div>
+                <div className="text-2xl font-semibold text-green-600">{caSachets.toFixed(0)}€</div>
+                <div className="text-xs text-gray-400 mt-1">à 5€/sachet</div>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-100 p-4">
+                <div className="text-xs text-gray-500 mb-1">CA estimé porte-clés</div>
+                <div className="text-2xl font-semibold text-amber-600">{caPortecles.toFixed(0)}€</div>
+                <div className="text-xs text-gray-400 mt-1">à 2.50€/pièce</div>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-100 p-4">
+                <div className="text-xs text-gray-500 mb-1">CA total estimé</div>
+                <div className="text-2xl font-semibold text-brand">{caTotal.toFixed(0)}€</div>
+                <div className="text-xs text-gray-400 mt-1">sachets + porte-clés</div>
+              </div>
+            </div>
+
+            {/* Stock sachets vides + porte-clés */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className={`rounded-xl border p-5 ${sachetsStock <= 160 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-medium text-base">Stock sachets vides</h2>
+                    {sachetsStock <= 160 && <p className="text-xs text-red-600 font-medium mt-0.5">⚠️ Stock bas !</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => updateSachetsStock(-10)} className="w-7 h-7 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-xs font-medium">−10</button>
+                    <input type="number" min="0" value={sachetsStock} onChange={e => setSachetsStockDirect(parseInt(e.target.value))} className={`w-16 text-center border rounded-lg px-1 py-1 text-base font-semibold ${sachetsStock <= 160 ? 'border-red-200 text-red-700' : 'border-gray-200'}`} />
+                    <button onClick={() => updateSachetsStock(10)} className="w-7 h-7 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-xs font-medium">+10</button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => updateSachetsStock(-10)} className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">−10</button>
-                  <input type="number" min="0" value={sachetsStock} onChange={e => setSachetsStockDirect(parseInt(e.target.value))} className={`w-20 text-center border rounded-lg px-2 py-1.5 text-lg font-semibold ${sachetsStock <= 160 ? 'border-red-200 text-red-700' : 'border-gray-200 text-gray-800'}`} />
-                  <button onClick={() => updateSachetsStock(10)} className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">+10</button>
-                  <button onClick={() => updateSachetsStock(100)} className="w-10 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-medium">+100</button>
-                  <span className="text-sm text-gray-400">sachets</span>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-100 p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-medium text-base">Stock porte-clés</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">Modèle "portecle" dans Stock</p>
+                  </div>
+                  <div className="text-2xl font-semibold text-amber-600">{totalPortecles}</div>
                 </div>
               </div>
             </div>
