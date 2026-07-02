@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Zap, Star } from 'lucide-react'
+import { Zap, Star, Shuffle } from 'lucide-react'
 
 interface Model { id: string; name: string; stock_normal: number }
 interface Sachet { n1: string; n2: string; gold: string }
 
 const GOLD_NAME = 'doree'
+const EXCLUDED = ['doree', 'portecle']
 
 export default function SachetsPage() {
   const [models, setModels] = useState<Model[]>([])
@@ -22,9 +23,15 @@ export default function SachetsPage() {
     })
   }, [])
 
+  function pickRandom(arr: any[]) {
+    return arr[Math.floor(Math.random() * arr.length)]
+  }
+
   function generate() {
     const goldModel = models.find(m => m.name.toLowerCase() === GOLD_NAME)
-    const normals = models.filter(m => m.name.toLowerCase() !== GOLD_NAME && m.stock_normal > 0).map(m => ({ ...m, qty: m.stock_normal }))
+    const normals = models
+      .filter(m => !EXCLUDED.includes(m.name.toLowerCase()) && m.stock_normal > 0)
+      .map(m => ({ ...m, qty: m.stock_normal }))
     const goldQty = { qty: goldModel?.stock_normal || 0 }
 
     if (!goldModel || goldQty.qty < 1 || normals.length < 2) {
@@ -36,11 +43,15 @@ export default function SachetsPage() {
     const result: Sachet[] = []
     for (let i = 0; i < nb; i++) {
       if (goldQty.qty < 1) break
-      normals.sort((a, b) => b.qty - a.qty)
       const avail = normals.filter(m => m.qty > 0)
       if (avail.length < 2) break
-      const n1 = avail[0]
-      const n2 = avail[1]
+
+      // Pioche aléatoire
+      const idx1 = Math.floor(Math.random() * avail.length)
+      const n1 = avail[idx1]
+      const avail2 = avail.filter((_, i) => i !== idx1)
+      const n2 = pickRandom(avail2)
+
       result.push({ n1: n1.name, n2: n2.name, gold: goldModel.name })
       n1.qty--; n2.qty--; goldQty.qty--
     }
@@ -70,14 +81,14 @@ export default function SachetsPage() {
   }
 
   const goldModel = models.find(m => m.name.toLowerCase() === GOLD_NAME)
-  const normalsCount = models.filter(m => m.name.toLowerCase() !== GOLD_NAME && m.stock_normal > 0).length
+  const normalsCount = models.filter(m => !EXCLUDED.includes(m.name.toLowerCase()) && m.stock_normal > 0).length
   const canGenerate = !!goldModel && (goldModel.stock_normal > 0) && normalsCount >= 2
 
   return (
     <div className="min-h-screen">
       <main className="max-w-5xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-semibold mb-2">Générateur de sachets</h1>
-        <p className="text-sm text-gray-500 mb-6">Chaque sachet contient 2 figurines normales + 1 figurine "doree" obligatoire.</p>
+        <p className="text-sm text-gray-500 mb-6">2 figurines normales tirées aléatoirement + 1 "doree" par sachet. Les porte-clés ne sont pas inclus.</p>
 
         <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
           <div className="flex items-center gap-6 flex-wrap">
@@ -95,25 +106,19 @@ export default function SachetsPage() {
                 <input type="number" min="1" max="500" className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-24" value={nb} onChange={e => setNb(+e.target.value)} />
               </div>
               <button onClick={generate} disabled={loading || !canGenerate} className="px-5 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark disabled:opacity-50 flex items-center gap-2">
-                <Zap className="w-4 h-4" /> Générer
+                <Shuffle className="w-4 h-4" /> Générer aléatoirement
               </button>
             </div>
           </div>
-          {!goldModel && !loading && (
-            <p className="text-xs text-red-500 mt-3">Aucun modèle nommé "doree" trouvé dans le stock. Créez-le dans la page Stock.</p>
-          )}
-          {goldModel && goldModel.stock_normal < 1 && !loading && (
-            <p className="text-xs text-red-500 mt-3">Stock de "doree" épuisé.</p>
-          )}
-          {normalsCount < 2 && !loading && (
-            <p className="text-xs text-red-500 mt-3">Il faut au moins 2 modèles normaux en stock.</p>
-          )}
+          {!goldModel && !loading && <p className="text-xs text-red-500 mt-3">Aucun modèle nommé "doree" trouvé dans le stock.</p>}
+          {goldModel && goldModel.stock_normal < 1 && !loading && <p className="text-xs text-red-500 mt-3">Stock de "doree" épuisé.</p>}
+          {normalsCount < 2 && !loading && <p className="text-xs text-red-500 mt-3">Il faut au moins 2 modèles normaux en stock.</p>}
         </div>
 
         {generated && sachets.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-600"><span className="font-medium">{sachets.length} sachets</span> générés</p>
+              <p className="text-sm text-gray-600"><span className="font-medium">{sachets.length} sachets</span> générés aléatoirement</p>
               <button onClick={applyToStock} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">Déduire du stock</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
