@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
 import { Plus, Trash2, Store, MapPin, Phone, RefreshCw, Pencil, X, Check } from 'lucide-react'
 
 interface Venue {
@@ -11,6 +10,8 @@ interface Venue {
   contact: string
   sachets_current: number
   sachets_target: number
+  portecles_current: number
+  portecles_target: number
   last_reorder: string | null
   notes: string
   reorder_day: number
@@ -29,7 +30,7 @@ export default function VenuesPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', address: '', contact: '', sachets_target: 80, notes: '', reorder_day: 1 })
+  const [form, setForm] = useState({ name: '', address: '', contact: '', sachets_target: 80, portecles_target: 0, notes: '', reorder_day: 1 })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { load() }, [])
@@ -42,14 +43,14 @@ export default function VenuesPage() {
 
   function startEdit(v: Venue) {
     setEditId(v.id)
-    setForm({ name: v.name, address: v.address, contact: v.contact, sachets_target: v.sachets_target, notes: v.notes, reorder_day: v.reorder_day || 1 })
+    setForm({ name: v.name, address: v.address, contact: v.contact, sachets_target: v.sachets_target, portecles_target: v.portecles_target || 0, notes: v.notes, reorder_day: v.reorder_day || 1 })
     setShowForm(true)
   }
 
   function cancelEdit() {
     setEditId(null)
     setShowForm(false)
-    setForm({ name: '', address: '', contact: '', sachets_target: 80, notes: '', reorder_day: 1 })
+    setForm({ name: '', address: '', contact: '', sachets_target: 80, portecles_target: 0, notes: '', reorder_day: 1 })
   }
 
   async function saveVenue() {
@@ -58,18 +59,24 @@ export default function VenuesPage() {
     if (editId) {
       await supabase.from('venues').update(form).eq('id', editId)
     } else {
-      await supabase.from('venues').insert({ ...form, sachets_current: 0 })
+      await supabase.from('venues').insert({ ...form, sachets_current: 0, portecles_current: 0 })
     }
     cancelEdit()
     setSaving(false)
     load()
   }
 
-  async function updateSachets(id: string, delta: number) {
+  async function updateStock(id: string, field: 'sachets_current' | 'portecles_current', delta: number) {
     const v = venues.find(v => v.id === id)!
-    const val = Math.max(0, v.sachets_current + delta)
-    await supabase.from('venues').update({ sachets_current: val }).eq('id', id)
-    setVenues(prev => prev.map(v => v.id === id ? { ...v, sachets_current: val } : v))
+    const val = Math.max(0, (v[field] || 0) + delta)
+    await supabase.from('venues').update({ [field]: val }).eq('id', id)
+    setVenues(prev => prev.map(v => v.id === id ? { ...v, [field]: val } : v))
+  }
+
+  async function setStockDirect(id: string, field: 'sachets_current' | 'portecles_current', val: number) {
+    if (isNaN(val)) return
+    await supabase.from('venues').update({ [field]: val }).eq('id', id)
+    setVenues(prev => prev.map(v => v.id === id ? { ...v, [field]: val } : v))
   }
 
   async function deleteVenue(id: string) {
@@ -89,11 +96,47 @@ export default function VenuesPage() {
     alert(`Réassort planifié pour le ${target.toLocaleDateString('fr-FR')} !`)
   }
 
-  function stockLevel(v: Venue) {
-    const ratio = v.sachets_current / v.sachets_target
+  function stockLevel(current: number, target: number) {
+    if (target === 0) return 'ok'
+    const ratio = current / target
     if (ratio < 0.25) return 'urgent'
     if (ratio < 0.5) return 'low'
     return 'ok'
+  }
+
+  function StockBar({ current, target, field, id }: { current: number, target: number, field: 'sachets_current' | 'portecles_current', id: string }) {
+    const level = stockLevel(current, target)
+    const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 100
+    return (
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>{field === 'sachets_current' ? 'Sachets en rayon' : 'Porte-clés en rayon'}</span>
+            <span className={level === 'urgent' ? 'text-red-600 font-medium' : level === 'low' ? 'text-amber-600 font-medium' : 'text-green-600 font-medium'}>
+              {current} {target > 0 ? `/ ${target}` : ''}
+            </span>
+          </div>
+          {target > 0 && (
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${level === 'urgent' ? 'bg-red-400' : level === 'low' ? 'bg-amber-400' : 'bg-green-400'}`} style={{ width: `${pct}%` }} />
+            </div>
+          )}
+        </div>
+        <div className="flex gap-1 items-center">
+          <button onClick={() => updateStock(id, field, -1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">−</button>
+          <input
+            type="number"
+            min="0"
+            defaultValue={current}
+            key={current}
+            onBlur={e => setStockDirect(id, field, parseInt(e.target.value))}
+            onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            className="w-14 text-center border border-gray-200 rounded-lg px-1 py-1 text-sm"
+          />
+          <button onClick={() => updateStock(id, field, 1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">+</button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -110,12 +153,13 @@ export default function VenuesPage() {
           <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
             <h2 className="font-medium mb-4">{editId ? 'Modifier le point de vente' : 'Nouveau point de vente'}</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><label className="text-xs text-gray-500 block mb-1">Nom *</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ex : Intermarché Panazol" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+              <div className="col-span-2"><label className="text-xs text-gray-500 block mb-1">Nom *</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ex : Tabac de la Gare" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
               <div><label className="text-xs text-gray-500 block mb-1">Adresse</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
               <div><label className="text-xs text-gray-500 block mb-1">Contact</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} /></div>
               <div><label className="text-xs text-gray-500 block mb-1">Objectif sachets</label><input type="number" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.sachets_target} onChange={e => setForm(f => ({ ...f, sachets_target: +e.target.value }))} /></div>
+              <div><label className="text-xs text-gray-500 block mb-1">Objectif porte-clés</label><input type="number" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.portecles_target} onChange={e => setForm(f => ({ ...f, portecles_target: +e.target.value }))} /></div>
               <div><label className="text-xs text-gray-500 block mb-1">Jour du réassort mensuel</label><input type="number" min="1" max="28" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.reorder_day} onChange={e => setForm(f => ({ ...f, reorder_day: +e.target.value }))} /></div>
-              <div className="col-span-2"><label className="text-xs text-gray-500 block mb-1">Notes</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+              <div><label className="text-xs text-gray-500 block mb-1">Notes</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
               <button onClick={cancelEdit} className="px-4 py-2 border border-gray-200 rounded-lg text-sm flex items-center gap-1"><X className="w-4 h-4" /> Annuler</button>
@@ -129,12 +173,10 @@ export default function VenuesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {venues.map(v => {
-              const level = stockLevel(v)
-              const pct = Math.min(100, Math.round((v.sachets_current / v.sachets_target) * 100))
               const days = v.reorder_day ? daysUntilReorder(v.reorder_day) : null
               return (
                 <div key={v.id} className="bg-white rounded-xl border border-gray-100 p-5">
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-4">
                     <div>
                       <h2 className="font-semibold text-base">{v.name}</h2>
                       {v.address && <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{v.address}</p>}
@@ -147,17 +189,14 @@ export default function VenuesPage() {
                       <button onClick={() => deleteVenue(v.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1"><span>Sachets en rayon</span><span className={level === 'urgent' ? 'text-red-600 font-medium' : level === 'low' ? 'text-amber-600 font-medium' : 'text-green-600 font-medium'}>{v.sachets_current} / {v.sachets_target}</span></div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all ${level === 'urgent' ? 'bg-red-400' : level === 'low' ? 'bg-amber-400' : 'bg-green-400'}`} style={{ width: `${pct}%` }} /></div>
-                    </div>
-                    <div className="flex gap-1 items-center">
-                      <button onClick={() => updateSachets(v.id, -1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">−</button>
-                      <input type="number" min="0" defaultValue={v.sachets_current} onBlur={async (e) => { const val = parseInt(e.target.value); if (!isNaN(val)) { await supabase.from('venues').update({ sachets_current: val }).eq('id', v.id); setVenues(prev => prev.map(venue => venue.id === v.id ? { ...venue, sachets_current: val } : venue)) }}} className="w-14 text-center border border-gray-200 rounded-lg px-1 py-1 text-sm" />
-                      <button onClick={() => updateSachets(v.id, 1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm">+</button>
-                    </div>
+
+                  <div className="space-y-3">
+                    <StockBar current={v.sachets_current || 0} target={v.sachets_target || 0} field="sachets_current" id={v.id} />
+                    {(v.portecles_target || 0) > 0 && (
+                      <StockBar current={v.portecles_current || 0} target={v.portecles_target || 0} field="portecles_current" id={v.id} />
+                    )}
                   </div>
+
                   {v.last_reorder && <p className="text-xs text-gray-400 mt-2">Dernier réassort : {new Date(v.last_reorder).toLocaleDateString('fr-FR')}</p>}
                   {v.notes && <p className="text-xs text-gray-400 mt-1 italic">{v.notes}</p>}
                 </div>
