@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 
 interface Model {
   id: string
@@ -32,6 +32,8 @@ function ModelsContent() {
   const [newName, setNewName] = useState('')
   const [newNormal, setNewNormal] = useState(30)
   const [saving, setSaving] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
 
   useEffect(() => { load() }, [])
 
@@ -54,6 +56,13 @@ function ModelsContent() {
     if (isNaN(val) || val < 0) return
     await supabase.from('models').update({ stock_normal: val }).eq('id', id)
     setModels(prev => prev.map(m => m.id === id ? { ...m, stock_normal: val } : m))
+  }
+
+  async function saveName(id: string) {
+    if (!editName.trim()) return
+    await supabase.from('models').update({ name: editName.trim() }).eq('id', id)
+    setModels(prev => prev.map(m => m.id === id ? { ...m, name: editName.trim() } : m))
+    setEditId(null)
   }
 
   async function deleteModel(id: string) {
@@ -119,10 +128,29 @@ function ModelsContent() {
                 <tr><td colSpan={4} className="text-center py-8 text-gray-400">Aucun modèle.</td></tr>
               ) : list.map(m => (
                 <tr key={m.id} className="border-t border-gray-50 hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-medium">{m.name}</td>
+                  <td className="px-4 py-3">
+                    {editId === m.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editName}
+                          onChange={e => setEditName(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveName(m.id); if (e.key === 'Escape') setEditId(null) }}
+                          className="border border-brand rounded-lg px-2 py-1 text-sm flex-1 focus:outline-none"
+                        />
+                        <button onClick={() => saveName(m.id)} className="text-green-500 hover:text-green-700"><Check className="w-4 h-4" /></button>
+                        <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : (
+                      <span className="font-medium">{m.name}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <input
                       type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       defaultValue={m.stock_normal}
                       key={m.stock_normal}
                       onBlur={e => setStockDirect(m.id, parseInt(e.target.value) || 0)}
@@ -132,7 +160,10 @@ function ModelsContent() {
                   </td>
                   <td className="px-4 py-3 text-center"><StatusBadge s={status(m)} /></td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => deleteModel(m.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => { setEditId(m.id); setEditName(m.name) }} className="text-gray-300 hover:text-brand transition-colors"><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => deleteModel(m.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -146,7 +177,7 @@ function ModelsContent() {
             <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 min-w-40" placeholder="Nom du modèle" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addModel()} />
             <div className="flex items-center gap-2 text-sm">
               <label className="text-gray-500">Stock</label>
-              <input type="number" min="0" className="border border-gray-200 rounded-lg px-3 py-2 w-20 text-sm" value={newNormal} onChange={e => setNewNormal(+e.target.value)} />
+              <input type="text" inputMode="numeric" className="border border-gray-200 rounded-lg px-3 py-2 w-20 text-sm" value={newNormal} onChange={e => setNewNormal(+e.target.value)} />
             </div>
             <button onClick={addModel} disabled={saving || !newName.trim()} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark disabled:opacity-50 flex items-center gap-1">
               <Plus className="w-4 h-4" /> Ajouter
