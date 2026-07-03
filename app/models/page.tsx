@@ -50,18 +50,10 @@ function ModelsContent() {
     load()
   }
 
-  async function updateStock(id: string, delta: number) {
-    const m = models.find(m => m.id === id)!
-    const val = Math.max(0, m.stock_normal + delta)
+  async function setStockDirect(id: string, val: number) {
+    if (isNaN(val) || val < 0) return
     await supabase.from('models').update({ stock_normal: val }).eq('id', id)
     setModels(prev => prev.map(m => m.id === id ? { ...m, stock_normal: val } : m))
-  }
-
-  async function setStockDirect(id: string, val: number) {
-    if (isNaN(val)) return
-    const v = Math.max(0, val)
-    await supabase.from('models').update({ stock_normal: v }).eq('id', id)
-    setModels(prev => prev.map(m => m.id === id ? { ...m, stock_normal: v } : m))
   }
 
   async function deleteModel(id: string) {
@@ -128,20 +120,16 @@ function ModelsContent() {
               ) : list.map(m => (
                 <tr key={m.id} className="border-t border-gray-50 hover:bg-gray-50/50">
                   <td className="px-4 py-3 font-medium">{m.name}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => updateStock(m.id, -1)} className="w-6 h-6 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-base leading-none">−</button>
-                      <input
-                        type="number"
-                        min="0"
-                        defaultValue={m.stock_normal}
-                        key={m.stock_normal}
-                        onBlur={e => setStockDirect(m.id, parseInt(e.target.value))}
-                        onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                        className="w-16 text-center border border-gray-200 rounded-lg px-1 py-1 text-sm font-semibold"
-                      />
-                      <button onClick={() => updateStock(m.id, 1)} className="w-6 h-6 rounded border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center text-base leading-none">+</button>
-                    </div>
+                  <td className="px-4 py-3 text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      defaultValue={m.stock_normal}
+                      key={m.stock_normal}
+                      onBlur={e => setStockDirect(m.id, parseInt(e.target.value))}
+                      onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                      className="w-20 text-center border border-gray-200 rounded-lg px-2 py-1 text-sm font-semibold focus:border-brand focus:outline-none"
+                    />
                   </td>
                   <td className="px-4 py-3 text-center"><StatusBadge s={status(m)} /></td>
                   <td className="px-4 py-3 text-right">
