@@ -122,8 +122,7 @@ function ModelsContent() {
                   <td className="px-4 py-3 font-medium">{m.name}</td>
                   <td className="px-4 py-3 text-center">
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
                       defaultValue={m.stock_normal}
                       key={m.stock_normal}
                       onBlur={e => setStockDirect(m.id, parseInt(e.target.value))}
