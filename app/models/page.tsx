@@ -125,7 +125,7 @@ function ModelsContent() {
                       type="text"
                       defaultValue={m.stock_normal}
                       key={m.stock_normal}
-                      onBlur={e => setStockDirect(m.id, parseInt(e.target.value))}
+                      onBlur={e => setStockDirect(m.id, parseInt(e.target.value) || 0)}
                       onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                       className="w-20 text-center border border-gray-200 rounded-lg px-2 py-1 text-sm font-semibold focus:border-brand focus:outline-none"
                     />
