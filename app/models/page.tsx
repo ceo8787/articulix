@@ -95,6 +95,20 @@ function ModelsContent() {
           </div>
         </div>
 
+        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+          <h2 className="text-sm font-medium text-gray-500 mb-3">Ajouter un modèle</h2>
+          <div className="flex gap-3 flex-wrap">
+            <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 min-w-40" placeholder="Nom du modèle" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addModel()} />
+            <div className="flex items-center gap-2 text-sm">
+              <label className="text-gray-500">Stock</label>
+              <input type="text" inputMode="numeric" className="border border-gray-200 rounded-lg px-3 py-2 w-20 text-sm" value={newNormal} onChange={e => setNewNormal(+e.target.value)} />
+            </div>
+            <button onClick={addModel} disabled={saving || !newName.trim()} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark disabled:opacity-50 flex items-center gap-1">
+              <Plus className="w-4 h-4" /> Ajouter
+            </button>
+          </div>
+        </div>
+
         <div className="flex gap-3 mb-4 flex-wrap">
           <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 min-w-40" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
           <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm" value={filter} onChange={e => setFilter(e.target.value)}>
@@ -111,7 +125,7 @@ function ModelsContent() {
           </select>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-4">
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
               <tr>
@@ -131,14 +145,7 @@ function ModelsContent() {
                   <td className="px-4 py-3">
                     {editId === m.id ? (
                       <div className="flex items-center gap-2">
-                        <input
-                          autoFocus
-                          type="text"
-                          value={editName}
-                          onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') saveName(m.id); if (e.key === 'Escape') setEditId(null) }}
-                          className="border border-brand rounded-lg px-2 py-1 text-sm flex-1 focus:outline-none"
-                        />
+                        <input autoFocus type="text" value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveName(m.id); if (e.key === 'Escape') setEditId(null) }} className="border border-brand rounded-lg px-2 py-1 text-sm flex-1 focus:outline-none" />
                         <button onClick={() => saveName(m.id)} className="text-green-500 hover:text-green-700"><Check className="w-4 h-4" /></button>
                         <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
                       </div>
@@ -147,16 +154,7 @@ function ModelsContent() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      defaultValue={m.stock_normal}
-                      key={m.stock_normal}
-                      onBlur={e => setStockDirect(m.id, parseInt(e.target.value) || 0)}
-                      onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                      className="w-20 text-center border border-gray-200 rounded-lg px-2 py-1 text-sm font-semibold focus:border-brand focus:outline-none"
-                    />
+                    <input type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={m.stock_normal} key={m.stock_normal} onBlur={e => setStockDirect(m.id, parseInt(e.target.value) || 0)} onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} className="w-20 text-center border border-gray-200 rounded-lg px-2 py-1 text-sm font-semibold focus:border-brand focus:outline-none" />
                   </td>
                   <td className="px-4 py-3 text-center"><StatusBadge s={status(m)} /></td>
                   <td className="px-4 py-3 text-right">
@@ -169,20 +167,6 @@ function ModelsContent() {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Ajouter un modèle</h2>
-          <div className="flex gap-3 flex-wrap">
-            <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 min-w-40" placeholder="Nom du modèle" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addModel()} />
-            <div className="flex items-center gap-2 text-sm">
-              <label className="text-gray-500">Stock</label>
-              <input type="text" inputMode="numeric" className="border border-gray-200 rounded-lg px-3 py-2 w-20 text-sm" value={newNormal} onChange={e => setNewNormal(+e.target.value)} />
-            </div>
-            <button onClick={addModel} disabled={saving || !newName.trim()} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark disabled:opacity-50 flex items-center gap-1">
-              <Plus className="w-4 h-4" /> Ajouter
-            </button>
-          </div>
         </div>
       </main>
     </div>
