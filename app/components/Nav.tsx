@@ -10,7 +10,7 @@ export default function Nav() {
         <span className="font-semibold text-lg">Articulix</span>
       </div>
       <div className="flex gap-1 flex-wrap">
-{[['/', 'Dashboard'], ['/models', 'Stock'], ['/venues', 'Points de vente'],['/map', 'Carte'], ['/reorders', 'Réassorts'], ['/history', 'Historique'], ['/sachets', 'Sachets'], ['/filaments', 'Filaments'], ['/invoices', 'Factures'], ['/tasks', 'Tâches'], ['/references', 'Références'], ['/revenue', 'CA']].map(([href, label]) => (
+  {[['/', 'Dashboard'], ['/models', 'Stock'], ['/venues', 'Points de vente'],['/map', 'Carte'], ['/reorders', 'Réassorts'], ['/prospects', 'Prospects'], ['/history', 'Historique'], ['/sachets', 'Sachets'], ['/filaments', 'Filaments'], ['/invoices', 'Factures'], ['/tasks', 'Tâches'], ['/references', 'Références'], ['/revenue', 'CA']].map(([href, label]) => (                                                                                                                                                  hets'], ['/filaments', 'Filaments'], ['/invoices', 'Factures'], ['/tasks', 'Tâches'], ['/references', 'Références'], ['/revenue', 'CA']].map(([href, label]) => (
           <Link key={href} href={href} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">{label}</Link>
         ))}
       </div>
